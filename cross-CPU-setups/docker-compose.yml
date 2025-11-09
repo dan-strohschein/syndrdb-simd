@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  avx2-test:
+    platform: linux/amd64
+    image: golang:1.22-bullseye
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: go test -v ./src/internal/simd/
+    environment:
+      - GOARCH=amd64
+      - GOOS=linux
