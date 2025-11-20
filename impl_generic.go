@@ -131,3 +131,115 @@ func strToLowerImpl(s []byte) {
 func strToUpperImpl(s []byte) {
 	strToUpperGeneric(s)
 }
+
+// ============================================================================
+// Float64 Comparisons
+// ============================================================================
+
+func cmpGtFloat64Impl(values []float64, threshold float64) []bool {
+	return cmpGtFloat64Generic(values, threshold)
+}
+
+func cmpGtFloat64MaskImpl(values []float64, threshold float64) []uint64 {
+	return cmpGtFloat64MaskGeneric(values, threshold)
+}
+
+func cmpGeFloat64Impl(values []float64, threshold float64) []bool {
+	return cmpGeFloat64Generic(values, threshold)
+}
+
+func cmpGeFloat64MaskImpl(values []float64, threshold float64) []uint64 {
+	return cmpGeFloat64MaskGeneric(values, threshold)
+}
+
+func cmpLtFloat64Impl(values []float64, threshold float64) []bool {
+	return cmpLtFloat64Generic(values, threshold)
+}
+
+func cmpLtFloat64MaskImpl(values []float64, threshold float64) []uint64 {
+	return cmpLtFloat64MaskGeneric(values, threshold)
+}
+
+func cmpLeFloat64Impl(values []float64, threshold float64) []bool {
+	return cmpLeFloat64Generic(values, threshold)
+}
+
+func cmpLeFloat64MaskImpl(values []float64, threshold float64) []uint64 {
+	return cmpLeFloat64MaskGeneric(values, threshold)
+}
+
+func cmpEqFloat64Impl(values []float64, threshold float64) []bool {
+	return cmpEqFloat64Generic(values, threshold)
+}
+
+func cmpEqFloat64MaskImpl(values []float64, threshold float64) []uint64 {
+	return cmpEqFloat64MaskGeneric(values, threshold)
+}
+
+func cmpNeFloat64Impl(values []float64, threshold float64) []bool {
+	return cmpNeFloat64Generic(values, threshold)
+}
+
+func cmpNeFloat64MaskImpl(values []float64, threshold float64) []uint64 {
+	return cmpNeFloat64MaskGeneric(values, threshold)
+}
+
+// ============================================================================
+// String Comparisons
+// ============================================================================
+
+func cmpEqStringImpl(values [][]byte, threshold []byte) []bool {
+	return cmpEqStringGeneric(values, threshold)
+}
+
+func cmpEqStringMaskImpl(values [][]byte, threshold []byte) []uint64 {
+	return cmpEqStringMaskGeneric(values, threshold)
+}
+
+func cmpNeStringImpl(values [][]byte, threshold []byte) []bool {
+	return cmpNeStringGeneric(values, threshold)
+}
+
+func cmpNeStringMaskImpl(values [][]byte, threshold []byte) []uint64 {
+	return cmpNeStringMaskGeneric(values, threshold)
+}
+
+func cmpHasPrefixStringImpl(values [][]byte, prefix []byte) []bool {
+	return cmpHasPrefixStringGeneric(values, prefix)
+}
+
+func cmpHasPrefixStringMaskImpl(values [][]byte, prefix []byte) []uint64 {
+	return cmpHasPrefixStringMaskGeneric(values, prefix)
+}
+
+func cmpHasSuffixStringImpl(values [][]byte, suffix []byte) []bool {
+	return cmpHasSuffixStringGeneric(values, suffix)
+}
+
+func cmpHasSuffixStringMaskImpl(values [][]byte, suffix []byte) []uint64 {
+	return cmpHasSuffixStringMaskGeneric(values, suffix)
+}
+
+func cmpContainsStringImpl(values [][]byte, substr []byte) []bool {
+	return cmpContainsStringGeneric(values, substr)
+}
+
+func cmpContainsStringMaskImpl(values [][]byte, substr []byte) []uint64 {
+	return cmpContainsStringMaskGeneric(values, substr)
+}
+
+func cmpEqStringIgnoreCaseImpl(values [][]byte, threshold []byte) []bool {
+	return cmpEqStringIgnoreCaseGeneric(values, threshold)
+}
+
+func cmpEqStringIgnoreCaseMaskImpl(values [][]byte, threshold []byte) []uint64 {
+	return cmpEqStringIgnoreCaseMaskGeneric(values, threshold)
+}
+
+func cmpMatchWildcardImpl(values [][]byte, pattern []byte) []bool {
+	return cmpMatchWildcardGeneric(values, pattern)
+}
+
+func cmpMatchWildcardMaskImpl(values [][]byte, pattern []byte) []uint64 {
+	return cmpMatchWildcardMaskGeneric(values, pattern)
+}

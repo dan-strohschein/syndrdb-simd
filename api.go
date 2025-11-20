@@ -198,10 +198,379 @@ func BoolsToBitmask(bools []bool) []uint64 {
 	return boolsToBitmask(bools)
 }
 
+// ============================================================================
+// Float64 Comparisons
+// ============================================================================
+
+// CmpGtFloat64 compares float64 values for greater-than against a threshold.
+// Returns a slice of booleans where result[i] == true if values[i] > threshold.
+//
+// NaN comparisons always return false per IEEE 754.
+// Infinity values are compared normally (e.g., +Inf > any finite number is true).
+//
+// This function automatically selects the best implementation:
+//   - AVX2 on x86-64 processors (4 elements per operation)
+//   - NEON on ARM64 processors (2 elements per operation)
+//   - Scalar fallback on other architectures
+func CmpGtFloat64(values []float64, threshold float64) []bool {
+	if len(values) == 0 {
+		return []bool{}
+	}
+
+	return cmpGtFloat64Impl(values, threshold)
+}
+
+// CmpGtFloat64Mask compares float64 values for greater-than and returns a bitmask.
+// Returns a slice of uint64 where bit i in result[j] is set if values[j*64+i] > threshold.
+// This is more memory-efficient than CmpGtFloat64 for large datasets.
+//
+// NaN comparisons always return false per IEEE 754.
+func CmpGtFloat64Mask(values []float64, threshold float64) []uint64 {
+	if len(values) == 0 {
+		return []uint64{}
+	}
+
+	return cmpGtFloat64MaskImpl(values, threshold)
+}
+
+// CmpGeFloat64 compares float64 values for greater-than-or-equal against a threshold.
+// Returns a slice of booleans where result[i] == true if values[i] >= threshold.
+//
+// NaN comparisons always return false per IEEE 754.
+func CmpGeFloat64(values []float64, threshold float64) []bool {
+	if len(values) == 0 {
+		return []bool{}
+	}
+
+	return cmpGeFloat64Impl(values, threshold)
+}
+
+// CmpGeFloat64Mask compares float64 values for greater-than-or-equal and returns a bitmask.
+func CmpGeFloat64Mask(values []float64, threshold float64) []uint64 {
+	if len(values) == 0 {
+		return []uint64{}
+	}
+
+	return cmpGeFloat64MaskImpl(values, threshold)
+}
+
+// CmpLtFloat64 compares float64 values for less-than against a threshold.
+// Returns a slice of booleans where result[i] == true if values[i] < threshold.
+//
+// NaN comparisons always return false per IEEE 754.
+func CmpLtFloat64(values []float64, threshold float64) []bool {
+	if len(values) == 0 {
+		return []bool{}
+	}
+
+	return cmpLtFloat64Impl(values, threshold)
+}
+
+// CmpLtFloat64Mask compares float64 values for less-than and returns a bitmask.
+func CmpLtFloat64Mask(values []float64, threshold float64) []uint64 {
+	if len(values) == 0 {
+		return []uint64{}
+	}
+
+	return cmpLtFloat64MaskImpl(values, threshold)
+}
+
+// CmpLeFloat64 compares float64 values for less-than-or-equal against a threshold.
+// Returns a slice of booleans where result[i] == true if values[i] <= threshold.
+//
+// NaN comparisons always return false per IEEE 754.
+func CmpLeFloat64(values []float64, threshold float64) []bool {
+	if len(values) == 0 {
+		return []bool{}
+	}
+
+	return cmpLeFloat64Impl(values, threshold)
+}
+
+// CmpLeFloat64Mask compares float64 values for less-than-or-equal and returns a bitmask.
+func CmpLeFloat64Mask(values []float64, threshold float64) []uint64 {
+	if len(values) == 0 {
+		return []uint64{}
+	}
+
+	return cmpLeFloat64MaskImpl(values, threshold)
+}
+
+// CmpEqFloat64 compares float64 values for equality against a threshold.
+// Returns a slice of booleans where result[i] == true if values[i] == threshold.
+//
+// NaN comparisons always return false per IEEE 754 (even NaN == NaN is false).
+func CmpEqFloat64(values []float64, threshold float64) []bool {
+	if len(values) == 0 {
+		return []bool{}
+	}
+
+	return cmpEqFloat64Impl(values, threshold)
+}
+
+// CmpEqFloat64Mask compares float64 values for equality and returns a bitmask.
+func CmpEqFloat64Mask(values []float64, threshold float64) []uint64 {
+	if len(values) == 0 {
+		return []uint64{}
+	}
+
+	return cmpEqFloat64MaskImpl(values, threshold)
+}
+
+// CmpNeFloat64 compares float64 values for inequality against a threshold.
+// Returns a slice of booleans where result[i] == true if values[i] != threshold.
+//
+// NaN != x returns true for all x per IEEE 754 (including NaN != NaN).
+func CmpNeFloat64(values []float64, threshold float64) []bool {
+	if len(values) == 0 {
+		return []bool{}
+	}
+
+	return cmpNeFloat64Impl(values, threshold)
+}
+
+// CmpNeFloat64Mask compares float64 values for inequality and returns a bitmask.
+func CmpNeFloat64Mask(values []float64, threshold float64) []uint64 {
+	if len(values) == 0 {
+		return []uint64{}
+	}
+
+	return cmpNeFloat64MaskImpl(values, threshold)
+}
+
 // BitmaskToBools converts a bitmask back to a boolean slice.
 // The length parameter specifies how many booleans to extract.
 func BitmaskToBools(mask []uint64, length int) []bool {
 	return bitmaskToBools(mask, length)
+}
+
+// ============================================================================
+// String Comparisons
+// ============================================================================
+
+// CmpEqString compares string values for equality against a threshold.
+// Returns a slice of booleans where result[i] == true if values[i] == threshold.
+//
+// Uses adaptive SIMD based on string count and average length. Configure thresholds
+// via SetStringSIMDThreshold.
+func CmpEqString(values []string, threshold string) []bool {
+	if len(values) == 0 {
+		return []bool{}
+	}
+
+	byteValues := stringsToBytes(values)
+	byteThreshold := []byte(threshold)
+	return cmpEqStringImpl(byteValues, byteThreshold)
+}
+
+// CmpEqStringMask compares string values for equality and returns a bitmask.
+func CmpEqStringMask(values []string, threshold string) []uint64 {
+	if len(values) == 0 {
+		return []uint64{}
+	}
+
+	byteValues := stringsToBytes(values)
+	byteThreshold := []byte(threshold)
+	return cmpEqStringMaskImpl(byteValues, byteThreshold)
+}
+
+// CmpNeString compares string values for inequality against a threshold.
+// Returns a slice of booleans where result[i] == true if values[i] != threshold.
+func CmpNeString(values []string, threshold string) []bool {
+	if len(values) == 0 {
+		return []bool{}
+	}
+
+	byteValues := stringsToBytes(values)
+	byteThreshold := []byte(threshold)
+	return cmpNeStringImpl(byteValues, byteThreshold)
+}
+
+// CmpNeStringMask compares string values for inequality and returns a bitmask.
+func CmpNeStringMask(values []string, threshold string) []uint64 {
+	if len(values) == 0 {
+		return []uint64{}
+	}
+
+	byteValues := stringsToBytes(values)
+	byteThreshold := []byte(threshold)
+	return cmpNeStringMaskImpl(byteValues, byteThreshold)
+}
+
+// CmpHasPrefixString checks if string values start with a given prefix.
+// Returns a slice of booleans where result[i] == true if values[i] starts with prefix.
+func CmpHasPrefixString(values []string, prefix string) []bool {
+	if len(values) == 0 {
+		return []bool{}
+	}
+
+	byteValues := stringsToBytes(values)
+	bytePrefix := []byte(prefix)
+	return cmpHasPrefixStringImpl(byteValues, bytePrefix)
+}
+
+// CmpHasPrefixStringMask checks for prefix match and returns a bitmask.
+func CmpHasPrefixStringMask(values []string, prefix string) []uint64 {
+	if len(values) == 0 {
+		return []uint64{}
+	}
+
+	byteValues := stringsToBytes(values)
+	bytePrefix := []byte(prefix)
+	return cmpHasPrefixStringMaskImpl(byteValues, bytePrefix)
+}
+
+// CmpHasSuffixString checks if string values end with a given suffix.
+// Returns a slice of booleans where result[i] == true if values[i] ends with suffix.
+func CmpHasSuffixString(values []string, suffix string) []bool {
+	if len(values) == 0 {
+		return []bool{}
+	}
+
+	byteValues := stringsToBytes(values)
+	byteSuffix := []byte(suffix)
+	return cmpHasSuffixStringImpl(byteValues, byteSuffix)
+}
+
+// CmpHasSuffixStringMask checks for suffix match and returns a bitmask.
+func CmpHasSuffixStringMask(values []string, suffix string) []uint64 {
+	if len(values) == 0 {
+		return []uint64{}
+	}
+
+	byteValues := stringsToBytes(values)
+	byteSuffix := []byte(suffix)
+	return cmpHasSuffixStringMaskImpl(byteValues, byteSuffix)
+}
+
+// CmpContainsString checks if string values contain a substring.
+// Returns a slice of booleans where result[i] == true if values[i] contains substr.
+func CmpContainsString(values []string, substr string) []bool {
+	if len(values) == 0 {
+		return []bool{}
+	}
+
+	byteValues := stringsToBytes(values)
+	byteSubstr := []byte(substr)
+	return cmpContainsStringImpl(byteValues, byteSubstr)
+}
+
+// CmpContainsStringMask checks for substring match and returns a bitmask.
+func CmpContainsStringMask(values []string, substr string) []uint64 {
+	if len(values) == 0 {
+		return []uint64{}
+	}
+
+	byteValues := stringsToBytes(values)
+	byteSubstr := []byte(substr)
+	return cmpContainsStringMaskImpl(byteValues, byteSubstr)
+}
+
+// CmpEqStringIgnoreCase compares string values for equality (case-insensitive ASCII).
+// Returns a slice of booleans where result[i] == true if values[i] equals threshold
+// ignoring case for ASCII characters (A-Z, a-z). Non-ASCII bytes are compared directly.
+func CmpEqStringIgnoreCase(values []string, threshold string) []bool {
+	if len(values) == 0 {
+		return []bool{}
+	}
+
+	byteValues := stringsToBytes(values)
+	byteThreshold := []byte(threshold)
+	return cmpEqStringIgnoreCaseImpl(byteValues, byteThreshold)
+}
+
+// CmpEqStringIgnoreCaseMask compares strings case-insensitively and returns a bitmask.
+func CmpEqStringIgnoreCaseMask(values []string, threshold string) []uint64 {
+	if len(values) == 0 {
+		return []uint64{}
+	}
+
+	byteValues := stringsToBytes(values)
+	byteThreshold := []byte(threshold)
+	return cmpEqStringIgnoreCaseMaskImpl(byteValues, byteThreshold)
+}
+
+// CmpLikeString performs SQL LIKE pattern matching on string values.
+// Supports % (any chars) and _ (single char) wildcards.
+// Returns a slice of booleans where result[i] == true if values[i] matches pattern.
+//
+// Pattern is compiled and optimized based on structure:
+//   - "exact" → exact equality check
+//   - "prefix%" → prefix match
+//   - "%suffix" → suffix match
+//   - "%contains%" → substring match
+//   - complex patterns with % and _ → wildcard matching with backtracking
+//
+// For repeated pattern usage, consider using CmpLikeStringCompiled for better performance.
+func CmpLikeString(values []string, pattern string) []bool {
+	if len(values) == 0 {
+		return []bool{}
+	}
+
+	compiled, err := CompilePatternAuto(pattern)
+	if err != nil {
+		// Return all false on invalid pattern
+		results := make([]bool, len(values))
+		return results
+	}
+
+	return cmpLikeStringCompiled(values, compiled)
+}
+
+// CmpLikeStringMask performs SQL LIKE pattern matching and returns a bitmask.
+func CmpLikeStringMask(values []string, pattern string) []uint64 {
+	bools := CmpLikeString(values, pattern)
+	return boolsToBitmask(bools)
+}
+
+// CmpLikeStringCompiled performs SQL LIKE pattern matching using a pre-compiled pattern.
+// This is more efficient when matching the same pattern against multiple value sets.
+//
+// Example:
+//
+//	pattern, err := CompilePattern("hello%")
+//	if err != nil { ... }
+//	results1 := CmpLikeStringCompiled(values1, pattern)
+//	results2 := CmpLikeStringCompiled(values2, pattern)
+func CmpLikeStringCompiled(values []string, pattern *CompiledPattern) []bool {
+	if len(values) == 0 {
+		return []bool{}
+	}
+
+	return cmpLikeStringCompiled(values, pattern)
+}
+
+// CmpLikeStringCompiledMask performs compiled LIKE matching and returns a bitmask.
+func CmpLikeStringCompiledMask(values []string, pattern *CompiledPattern) []uint64 {
+	bools := CmpLikeStringCompiled(values, pattern)
+	return boolsToBitmask(bools)
+}
+
+// cmpLikeStringCompiled is the internal implementation of LIKE matching.
+func cmpLikeStringCompiled(values []string, pattern *CompiledPattern) []bool {
+	byteValues := stringsToBytes(values)
+
+	switch pattern.Type {
+	case PatternExact:
+		// Exact match
+		return cmpEqStringImpl(byteValues, pattern.Segments[0])
+	case PatternPrefix:
+		// Prefix match
+		return cmpHasPrefixStringImpl(byteValues, pattern.Segments[0])
+	case PatternSuffix:
+		// Suffix match
+		return cmpHasSuffixStringImpl(byteValues, pattern.Segments[0])
+	case PatternContains:
+		// Substring match
+		return cmpContainsStringImpl(byteValues, pattern.Segments[0])
+	case PatternWildcard:
+		// Complex wildcard matching
+		return cmpMatchWildcardImpl(byteValues, []byte(pattern.OriginalPattern))
+	default:
+		// Unknown pattern type - return all false
+		results := make([]bool, len(values))
+		return results
+	}
 }
 
 // ============================================================================
