@@ -14,10 +14,12 @@ TEXT ·hashInt64AVX2(SB), NOSPLIT, $0-24
 	// prime64  = 1099511628211 = 0x100000001B3
 	MOVQ $0xCBF29CE484222325, AX   // FNV offset
 	MOVQ $0x100000001B3, BX        // FNV prime
+	MOVQ $0xFF, DX                 // Byte mask
 	
 	// Broadcast constants to YMM registers
 	VPBROADCASTQ AX, Y0   // Y0 = [offset, offset, offset, offset]
 	VPBROADCASTQ BX, Y1   // Y1 = [prime, prime, prime, prime]
+	VPBROADCASTQ DX, Y5   // Y5 = [0xFF, 0xFF, 0xFF, 0xFF] byte mask
 
 	// Process 4 elements at a time
 	SHRQ $2, CX          // CX = count / 4
@@ -32,49 +34,49 @@ loop:
 	
 	// Process each byte of the int64 (8 bytes)
 	// Byte 0
-	VPAND $0xFF, Y2, Y4
+	VPAND Y5, Y2, Y4
 	VPXOR Y4, Y3, Y3
 	VPMULLQ Y1, Y3, Y3
 	VPSRLQ $8, Y2, Y2
 	
 	// Byte 1
-	VPAND $0xFF, Y2, Y4
+	VPAND Y5, Y2, Y4
 	VPXOR Y4, Y3, Y3
 	VPMULLQ Y1, Y3, Y3
 	VPSRLQ $8, Y2, Y2
 	
 	// Byte 2
-	VPAND $0xFF, Y2, Y4
+	VPAND Y5, Y2, Y4
 	VPXOR Y4, Y3, Y3
 	VPMULLQ Y1, Y3, Y3
 	VPSRLQ $8, Y2, Y2
 	
 	// Byte 3
-	VPAND $0xFF, Y2, Y4
+	VPAND Y5, Y2, Y4
 	VPXOR Y4, Y3, Y3
 	VPMULLQ Y1, Y3, Y3
 	VPSRLQ $8, Y2, Y2
 	
 	// Byte 4
-	VPAND $0xFF, Y2, Y4
+	VPAND Y5, Y2, Y4
 	VPXOR Y4, Y3, Y3
 	VPMULLQ Y1, Y3, Y3
 	VPSRLQ $8, Y2, Y2
 	
 	// Byte 5
-	VPAND $0xFF, Y2, Y4
+	VPAND Y5, Y2, Y4
 	VPXOR Y4, Y3, Y3
 	VPMULLQ Y1, Y3, Y3
 	VPSRLQ $8, Y2, Y2
 	
 	// Byte 6
-	VPAND $0xFF, Y2, Y4
+	VPAND Y5, Y2, Y4
 	VPXOR Y4, Y3, Y3
 	VPMULLQ Y1, Y3, Y3
 	VPSRLQ $8, Y2, Y2
 	
 	// Byte 7
-	VPAND $0xFF, Y2, Y4
+	VPAND Y5, Y2, Y4
 	VPXOR Y4, Y3, Y3
 	VPMULLQ Y1, Y3, Y3
 	
@@ -154,7 +156,9 @@ loop_xxh:
 	
 	// h64 = prime64_5 + 8 for each
 	VPBROADCASTQ R12, Y4
-	VPADDQ $<8, 8, 8, 8>, Y4, Y4    // h64 = prime64_5 + 8
+	MOVQ $8, R13
+	VPBROADCASTQ R13, Y6
+	VPADDQ Y6, Y4, Y4    // h64 = prime64_5 + 8
 	
 	// k1 = value * prime64_2
 	VPMULLQ Y0, Y3, Y5   // Y5 = k1 = value * prime64_2

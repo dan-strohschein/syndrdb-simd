@@ -151,9 +151,12 @@ TEXT ·strToLowerAVX2(SB), NOSPLIT, $0-16
 	
 	// ASCII 'A' = 65, 'Z' = 90
 	// To convert to lowercase: add 32 if in range [A-Z]
-	VPBROADCASTB $65, Y6     // Y6 = 'A' repeated
-	VPBROADCASTB $90, Y7     // Y7 = 'Z' repeated
-	VPBROADCASTB $32, Y8     // Y8 = 32 repeated
+	MOVQ $65, AX
+	VPBROADCASTB AX, Y6      // Y6 = 'A' repeated
+	MOVQ $90, AX
+	VPBROADCASTB AX, Y7      // Y7 = 'Z' repeated
+	MOVQ $32, AX
+	VPBROADCASTB AX, Y8      // Y8 = 32 repeated
 
 loop_lower_32:
 	CMPQ CX, $32
@@ -207,9 +210,12 @@ TEXT ·strToUpperAVX2(SB), NOSPLIT, $0-16
 
 	// ASCII 'a' = 97, 'z' = 122
 	// To convert to uppercase: subtract 32 if in range [a-z]
-	VPBROADCASTB $97, Y6     // Y6 = 'a' repeated
-	VPBROADCASTB $122, Y7    // Y7 = 'z' repeated
-	VPBROADCASTB $32, Y8     // Y8 = 32 repeated
+	MOVQ $97, AX
+	VPBROADCASTB AX, Y6      // Y6 = 'a' repeated
+	MOVQ $122, AX
+	VPBROADCASTB AX, Y7      // Y7 = 'z' repeated
+	MOVQ $32, AX
+	VPBROADCASTB AX, Y8      // Y8 = 32 repeated
 
 loop_upper_32:
 	CMPQ CX, $32

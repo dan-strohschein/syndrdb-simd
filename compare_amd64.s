@@ -35,7 +35,25 @@ TEXT ·cmpGtInt64AVX2(SB), NOSPLIT, $0-24
     // Perform packed comparison: Y1 > Y0
     // VPCMPGTQ compares 4 pairs of 64-bit signed integers for "greater than"
     // Result: Each 64-bit lane becomes 0xFFFFFFFFFFFFFFFF if true, 0x0000000000000000 if false
-    VPCMPGTQ Y0, Y1, Y2             // Y2[i] = (Y1[i] > Y0[i]) ? 0xFFFF... : 0x0000...
+    //
+    // WORKAROUND: Go assembler (as of 1.25.5) incorrectly encodes VPCMPGTQ with YMM registers
+    // using AVX-512 EVEX prefix (0x62) instead of AVX2 VEX prefix (0xC4/0xC5).
+    // This causes "illegal instruction" crashes on CPUs without AVX-512.
+    //
+    // Manual VEX encoding for: VPCMPGTQ Y0, Y1, Y2
+    // Instruction: VEX.256.66.0F38.WIG 37 /r
+    // Encoding breakdown:
+    //   - VEX prefix: 3-byte VEX form (C4)
+    //   - Byte 1 (C4): VEX prefix indicator
+    //   - Byte 2 (E2): R=1, X=1, B=1 (no extension), m-mmmm=00010 (0F38 opcode map)
+    //   - Byte 3 (75): W=0 (ignore), vvvv=1110 (~Y0=14, inverted), L=1 (256-bit), pp=01 (66 prefix)
+    //   - Byte 4 (37): Opcode for PCMPGTQ
+    //   - Byte 5 (D1): ModR/M = 11 010 001 (register-direct, Y2, Y1)
+    //     * mod=11 (register mode, no memory operand)
+    //     * reg=010 (destination Y2)
+    //     * r/m=001 (source Y1)
+    // Result: Y2 = Y1 > Y0 (each 64-bit lane)
+    BYTE $0xC4; BYTE $0xE2; BYTE $0x75; BYTE $0x37; BYTE $0xD1
     
     // Convert vector comparison results to a compact bitmask
     // VMOVMSKPD extracts the sign bit from each 64-bit double-precision lane
@@ -65,14 +83,28 @@ TEXT ·cmpEqInt64AVX2(SB), NOSPLIT, $0-24
     MOVQ    threshold+8(FP), AX
     
     // Broadcast threshold to all lanes
-    VPBROADCASTQ AX, Y0
+    // Use XMM register as intermediate since VPBROADCASTQ can't take GPR directly
+    MOVQ    AX, X0                  // Move threshold to XMM0
+    VPBROADCASTQ X0, Y0             // Broadcast to all 4 lanes of Y0
     
     // Load 4 int64 values
     VMOVDQU (SI), Y1
     
     // Compare for equality: Y1 == Y0
     // VPCMPEQQ sets each 64-bit lane to 0xFFFF... if equal, 0x0000... otherwise
-    VPCMPEQQ Y0, Y1, Y2
+    //
+    // WORKAROUND: Manual VEX encoding for: VPCMPEQQ Y0, Y1, Y2
+    // Instruction: VEX.256.66.0F38.WIG 29 /r
+    // Encoding breakdown:
+    //   - VEX prefix: 3-byte VEX form (C4)
+    //   - Byte 1 (C4): VEX prefix indicator
+    //   - Byte 2 (E2): R=1, X=1, B=1 (no extension), m-mmmm=00010 (0F38 opcode map)
+    //   - Byte 3 (75): W=0, vvvv=1110 (~Y1=14), L=1 (256-bit), pp=01 (66 prefix)
+    //   - Byte 4 (29): Opcode for PCMPEQQ
+    //   - Byte 5 (D0): ModR/M = 11 010 000 (register mode, Y2 dest, Y0 r/m source)
+    //     * The instruction compares Y0 (r/m) with Y1 (vvvv), result in Y2 (reg)
+    // Result: Y2 = (Y0 == Y1) per 64-bit lane
+    BYTE $0xC4; BYTE $0xE2; BYTE $0x75; BYTE $0x29; BYTE $0xD0
     
     // Extract sign bits to create bitmask
     VMOVMSKPD Y2, AX
@@ -97,7 +129,18 @@ TEXT ·cmpLtInt64AVX2(SB), NOSPLIT, $0-24
     
     // Compare: Y0 > Y1 (equivalent to Y1 < Y0)
     // We swap the operands to achieve "less than" semantics
-    VPCMPGTQ Y1, Y0, Y2             // Y2[i] = (Y0[i] > Y1[i]) ≡ (Y1[i] < Y0[i])
+    //
+    // WORKAROUND: Manual VEX encoding for: VPCMPGTQ Y1, Y0, Y2
+    // This compares Y0 > Y1 (which is equivalent to Y1 < Y0)
+    // Instruction: VEX.256.66.0F38.WIG 37 /r
+    // Encoding breakdown:
+    //   - Byte 1 (C4): VEX prefix
+    //   - Byte 2 (E2): 0F38 opcode map
+    //   - Byte 3 (6D): vvvv=1101 (~Y1=13), L=1, pp=01
+    //   - Byte 4 (37): PCMPGTQ opcode
+    //   - Byte 5 (D0): ModR/M = 11 010 000 (Y2 dest, Y0 source)
+    // Result: Y2 = (Y0 > Y1) = (Y1 < Y0)
+    BYTE $0xC4; BYTE $0xE2; BYTE $0x6D; BYTE $0x37; BYTE $0xD0
     
     VMOVMSKPD Y2, AX
     VZEROUPPER
@@ -119,10 +162,16 @@ TEXT ·cmpGeInt64AVX2(SB), NOSPLIT, $0-24
     VMOVDQU (SI), Y1
     
     // First comparison: values > threshold
-    VPCMPGTQ Y0, Y1, Y2             // Y2 = (Y1 > Y0)
+    // WORKAROUND: Manual VEX encoding for: VPCMPGTQ Y0, Y1, Y2
+    // Y2 = (Y1 > Y0)
+    BYTE $0xC4; BYTE $0xE2; BYTE $0x75; BYTE $0x37; BYTE $0xD1
     
     // Second comparison: values == threshold
-    VPCMPEQQ Y0, Y1, Y3             // Y3 = (Y1 == Y0)
+    // WORKAROUND: Manual VEX encoding for: VPCMPEQQ Y0, Y1, Y3
+    // Encoding: vvvv=1110 (~Y0), dest=Y3 (011), source=Y1 (001)
+    // Byte 5 (D9): ModR/M = 11 011 001
+    // Y3 = (Y1 == Y0)
+    BYTE $0xC4; BYTE $0xE2; BYTE $0x75; BYTE $0x29; BYTE $0xD9
     
     // Combine with OR: (Y1 > Y0) OR (Y1 == Y0) ≡ (Y1 >= Y0)
     VPOR Y3, Y2, Y2                 // Y2 = Y2 | Y3
@@ -147,10 +196,14 @@ TEXT ·cmpLeInt64AVX2(SB), NOSPLIT, $0-24
     VMOVDQU (SI), Y1
     
     // First comparison: threshold > values (i.e., values < threshold)
-    VPCMPGTQ Y1, Y0, Y2             // Y2 = (Y0 > Y1) ≡ (Y1 < Y0)
+    // WORKAROUND: Manual VEX encoding for: VPCMPGTQ Y1, Y0, Y2
+    // Y2 = (Y0 > Y1) = (Y1 < Y0)
+    BYTE $0xC4; BYTE $0xE2; BYTE $0x6D; BYTE $0x37; BYTE $0xD0
     
     // Second comparison: values == threshold
-    VPCMPEQQ Y0, Y1, Y3             // Y3 = (Y1 == Y0)
+    // WORKAROUND: Manual VEX encoding for: VPCMPEQQ Y0, Y1, Y3
+    // Y3 = (Y1 == Y0)
+    BYTE $0xC4; BYTE $0xE2; BYTE $0x75; BYTE $0x29; BYTE $0xD9
     
     // Combine with OR
     VPOR Y3, Y2, Y2
@@ -175,7 +228,9 @@ TEXT ·cmpNeInt64AVX2(SB), NOSPLIT, $0-24
     VMOVDQU (SI), Y1
     
     // Compare for equality
-    VPCMPEQQ Y0, Y1, Y2             // Y2 = (Y1 == Y0)
+    // WORKAROUND: Manual VEX encoding for: VPCMPEQQ Y0, Y1, Y2
+    // Y2 = (Y1 == Y0)
+    BYTE $0xC4; BYTE $0xE2; BYTE $0x75; BYTE $0x29; BYTE $0xD1
     
     // Extract bitmask
     VMOVMSKPD Y2, AX

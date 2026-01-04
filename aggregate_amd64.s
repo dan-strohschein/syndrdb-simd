@@ -185,7 +185,8 @@ cleanup_min:
 	RET
 	
 return_max_int64:
-	MOVQ     $0x7FFFFFFFFFFFFFFF, ret+16(FP)  // math.MaxInt64
+	MOVQ     $0x7FFFFFFFFFFFFFFF, AX
+	MOVQ     AX, ret+16(FP)  // math.MaxInt64
 	RET
 
 // func maxInt64AVX2(values *int64, length int) int64
@@ -289,7 +290,8 @@ cleanup_max:
 	RET
 	
 return_min_int64:
-	MOVQ     $0x8000000000000000, ret+16(FP)  // math.MinInt64
+	MOVQ     $0x8000000000000000, AX
+	MOVQ     AX, ret+16(FP)  // math.MinInt64
 	RET
 
 // func countNonNullAVX2(values *int64, nullBitmap *uint64, length int) int64
@@ -324,7 +326,7 @@ count_loop:
 	ANDQ     $63, R11              // R11 = bit_index % 64
 	
 	// Check if bit is set (null)
-	BTQBIT   R11, R10              // Test bit
+	BTQ      R11, R10              // Test bit
 	JC       skip_null             // If carry (bit=1), it's null, skip
 	
 	// Not null, increment count

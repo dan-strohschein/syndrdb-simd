@@ -964,7 +964,7 @@ func cmpHasPrefixStringImpl(values [][]byte, prefix []byte) []bool {
 
 	results := make([]bool, len(values))
 	prefixLen := len(prefix)
-	
+
 	for i, v := range values {
 		if len(v) < prefixLen {
 			results[i] = false
@@ -992,7 +992,7 @@ func cmpHasSuffixStringImpl(values [][]byte, suffix []byte) []bool {
 
 	results := make([]bool, len(values))
 	suffixLen := len(suffix)
-	
+
 	for i, v := range values {
 		if len(v) < suffixLen {
 			results[i] = false
